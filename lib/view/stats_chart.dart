@@ -2,10 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class PolygonalStatsChart extends StatelessWidget {
-  const PolygonalStatsChart({
-    super.key,
-    required this.stats,
-  });
+  const PolygonalStatsChart({super.key, required this.stats});
 
   /// Основная карта данных пользователя (например, {"taunt_strength": 78.5, "taunt_speed": 60.0})
   final Map<String, double> stats;
@@ -13,9 +10,7 @@ class PolygonalStatsChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Ограничиваем данные ровно 5 метриками
-    final userTaunts = Map<String, double>.fromEntries(
-      stats.entries.take(5),
-    );
+    final userTaunts = Map<String, double>.fromEntries(stats.entries.take(5));
 
     if (userTaunts.length < 3) {
       return const Center(
@@ -66,7 +61,8 @@ class _PolygonalPainter extends CustomPainter {
 
     // 1. Отрисовка фоновой сетки (концентрические многоугольники)
     final gridPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.2)
+      ..color = Colors.grey
+          .withValues(alpha: 0.2) // Заменено с .withOpacity(0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
 
@@ -82,7 +78,8 @@ class _PolygonalPainter extends CustomPainter {
 
     // 2. Отрисовка осей, радиально идущих из центра
     final axisPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.2)
+      ..color = Colors.grey
+          .withValues(alpha: 0.2) // Заменено с .withOpacity(0.2)
       ..strokeWidth = 0.8;
 
     for (int i = 0; i < sides; i++) {
@@ -91,7 +88,8 @@ class _PolygonalPainter extends CustomPainter {
 
     // 3. Отрисовка формы основных данных спортсмена (основной полигон)
     final fillPaint = Paint()
-      ..color = fillColor.withOpacity(0.25)
+      ..color = fillColor
+          .withValues(alpha: 0.25) // Заменено с .withOpacity(0.25)
       ..style = PaintingStyle.fill;
 
     final strokePaint = Paint()
@@ -120,10 +118,10 @@ class _PolygonalPainter extends CustomPainter {
     // 4. Отрисовка динамических текстовых меток вокруг осей
     for (int i = 0; i < sides; i++) {
       final angle = -pi / 2 + i * 2 * pi / sides;
-      final labelRadius = radius + 26; 
+      final labelRadius = radius + 26;
       final lx = center.dx + labelRadius * cos(angle);
       final ly = center.dy + labelRadius * sin(angle);
-      
+
       final name = keys[i].split('_').last.toUpperCase();
       final value = "${taunts[keys[i]]!.toStringAsFixed(0)}%";
 
@@ -132,8 +130,13 @@ class _PolygonalPainter extends CustomPainter {
     }
   }
 
-  void _drawText(Canvas canvas, String text, Offset position,
-      {double fontSize = 14, bool bold = false}) {
+  void _drawText(
+    Canvas canvas,
+    String text,
+    Offset position, {
+    double fontSize = 14,
+    bool bold = false,
+  }) {
     final tp = TextPainter(
       text: TextSpan(
         text: text,
