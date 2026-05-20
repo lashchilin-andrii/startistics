@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:startistics/util/format_taunt_name.dart';
 
 class PolygonalStatsChart extends StatelessWidget {
   const PolygonalStatsChart({super.key, required this.stats});
@@ -126,38 +127,12 @@ class _PolygonalPainter extends CustomPainter {
       final lx = center.dx + labelRadius * cos(angle);
       final ly = center.dy + labelRadius * sin(angle);
 
-      // Форматируем имя (заменяем "taunt_strength" на "STR")
-      // 1. Базовое форматирование имени (получаем чистое слово, например, "AGILITY" или "STRENGTH")
-        final String rawName = keys[i].contains('_')
-            ? keys[i].split('_').last.toUpperCase()
-            : keys[i].toUpperCase();
+      final String rawName = keys[i].contains('_')
+          ? keys[i].split('_').last.toUpperCase()
+          : keys[i].toUpperCase();
+      final name = formatTauntName(rawName);
 
-        // Регулярное выражение для поиска гласных (английских и русских)
-        final RegExp vowelsRegExp = RegExp(r'[aeiouyаеёиоуыэюя]', caseSensitive: false);
-
-        String processedName = '';
-
-        // Разбираем слово посимвольно
-        for (int charIndex = 0; charIndex < rawName.length; charIndex++) {
-          final String char = rawName[charIndex];
-          
-          // Если буква первая (индекс 0) или вторая (индекс 1) — оставляем её в любом случае
-          if (charIndex == 0 || charIndex == 1) {
-            processedName += char;
-          } else {
-            // Для всех остальных позиций (начиная с 3-й буквы) удаляем гласные
-            if (!vowelsRegExp.hasMatch(char)) {
-              processedName += char;
-            }
-          }
-        }
-
-        // Берем первые 3 получившиеся буквы
-        final String name = processedName.length > 3 
-            ? processedName.substring(0, 3) 
-            : processedName;
-
-        final value = "${taunts[keys[i]]!.toStringAsFixed(0)}%";
+      final value = "${taunts[keys[i]]!.toStringAsFixed(0)}%";
       // Чтобы текст не накладывался друг на друга при 8+ осях,
       // выстраиваем имя и проценты в одну строку, если параметров много.
       if (sides > 6) {
