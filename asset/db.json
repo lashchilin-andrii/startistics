@@ -42,8 +42,8 @@
       "tauntIds": ["taunt_strength"] 
     },
     { 
-      "metricId": "metric_sprint_100m", 
-      "metricName": "Sprint 100m", 
+      "metricId": "metric_sprint_400m", 
+      "metricName": "Sprint 400m", 
       "unitId": "unit_second",
       "lowerIsBetter": true,
       "tauntIds": ["taunt_speed"] 
@@ -75,7 +75,7 @@
         { "metricId": "metric_bench_press", "value": 90.0 },
         { "metricId": "metric_pull_ups", "value": 13.0 },
         { "metricId": "metric_dips", "value": 13.0 },
-        { "metricId": "metric_sprint_100m", "value": 20.8 },
+        { "metricId": "metric_sprint_400m", "value": 120.0 },
         { "metricId": "metric_vertical_jump", "value": 0.65 },
         { "metricId": "metric_plank_hold", "value": 100.0 },
         { "metricId": "metric_english_proficiency_level", "value": 4.0 }
@@ -92,9 +92,9 @@
       "userWeightKg": 80.0,
       "userMetrics": [ 
         { "metricId": "metric_bench_press", "value": 140.0 },
-        { "metricId": "metric_pull_ups", "value": 30.0 },
-        { "metricId": "metric_dips", "value": 40.0 },
-        { "metricId": "metric_sprint_100m", "value": 11.2 },
+        { "metricId": "metric_pull_ups", "value": 32.0 },
+        { "metricId": "metric_dips", "value": 43.0 },
+        { "metricId": "metric_sprint_400m", "value": 43.02 },
         { "metricId": "metric_vertical_jump", "value": 1.295 },
         { "metricId": "metric_plank_hold", "value": 350.0 },
         { "metricId": "metric_english_proficiency_level", "value": 6.0 }
