@@ -1,4 +1,6 @@
-class TauntModel {
+import 'package:startistics/model/base.dart';
+
+class TauntModel implements BaseModel {
   final String tauntId;
   final String tauntName;
 

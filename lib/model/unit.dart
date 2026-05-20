@@ -1,4 +1,6 @@
-class UnitModel {
+import 'package:startistics/model/base.dart';
+
+class UnitModel implements BaseModel {
   final String unitId;
   final String unitName;
 

@@ -1,6 +1,7 @@
+import 'package:startistics/model/base.dart';
 import 'package:startistics/model/user_metric.dart';
 
-class UserModel {
+class UserModel implements BaseModel {
   final String userId;
   final String userName;
   final String userSex;
@@ -20,16 +21,16 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-  return UserModel(
-    userId: json['userId'] ?? '',
-    userName: json['userName'] ?? '',
-    userSex: json['userSex'] ?? '',
-    userAge: json['userAge'] ?? 0,
-    userHeightCm: json['userHeightCm'] ?? 0,
-    // Вот здесь исправлено:
-    userWeightKg: (json['userWeightKg'] ?? 0.0).toDouble(),
-    userMetrics: (json['userMetrics'] as List? ?? [])
-        .map((e) => UserMetricModel.fromJson(e))
-        .toList(),
-  );
-}}
+    return UserModel(
+      userId: json['userId'] ?? '',
+      userName: json['userName'] ?? '',
+      userSex: json['userSex'] ?? '',
+      userAge: json['userAge'] ?? 0,
+      userHeightCm: json['userHeightCm'] ?? 0,
+      userWeightKg: (json['userWeightKg'] ?? 0.0).toDouble(),
+      userMetrics: (json['userMetrics'] as List? ?? [])
+          .map((e) => UserMetricModel.fromJson(e))
+          .toList(),
+    );
+  }
+}

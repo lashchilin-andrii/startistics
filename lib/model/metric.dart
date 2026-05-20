@@ -1,11 +1,13 @@
-class MetricDefinitionModel {
+import 'package:startistics/model/base.dart';
+
+class MetricModel implements BaseModel {
   final String metricId;
   final String metricName;
   final String unitId;
   final bool lowerIsBetter;
   final List<String> tauntIds;
 
-  MetricDefinitionModel({
+  MetricModel({
     required this.metricId,
     required this.metricName,
     required this.unitId,
@@ -13,8 +15,8 @@ class MetricDefinitionModel {
     required this.tauntIds,
   });
 
-  factory MetricDefinitionModel.fromJson(Map<String, dynamic> json) {
-    return MetricDefinitionModel(
+  factory MetricModel.fromJson(Map<String, dynamic> json) {
+    return MetricModel(
       metricId: json['metricId'] ?? '',
       metricName: json['metricName'] ?? '',
       unitId: json['unitId'] ?? '',

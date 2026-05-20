@@ -9,14 +9,28 @@
     { "tauntId": "taunt_strength", "tauntName": "Strength" },
     { "tauntId": "taunt_speed", "tauntName": "Speed" },
     { "tauntId": "taunt_agility", "tauntName": "Agility" },
-    { "tauntId": "taunt_flexibility", "tauntName": "Flexibility" },
-    { "tauntId": "taunt_endurance", "tauntName": "Endurance" }
+    { "tauntId": "taunt_endurance", "tauntName": "Endurance" },
+    { "tauntId": "taunt_intelligence", "tauntName": "Intelligence" }
   ],
   "metrics": [
+    { 
+      "metricId": "metric_english_proficiency_level", 
+      "metricName": "English Proficiency Level", 
+      "unitId": "unit_int",
+      "lowerIsBetter": false,
+      "tauntIds": ["taunt_intelligence"] 
+    },
     { 
       "metricId": "metric_bench_press", 
       "metricName": "Bench Press", 
       "unitId": "unit_kilogram",
+      "lowerIsBetter": false,
+      "tauntIds": ["taunt_strength"] 
+    },
+    { 
+      "metricId": "metric_dips", 
+      "metricName": "Dips", 
+      "unitId": "unit_int",
       "lowerIsBetter": false,
       "tauntIds": ["taunt_strength"] 
     },
@@ -28,8 +42,8 @@
       "tauntIds": ["taunt_strength"] 
     },
     { 
-      "metricId": "metric_100m_sprint", 
-      "metricName": "100m Sprint", 
+      "metricId": "metric_sprint_100m", 
+      "metricName": "Sprint 100m", 
       "unitId": "unit_second",
       "lowerIsBetter": true,
       "tauntIds": ["taunt_speed"] 
@@ -40,13 +54,6 @@
       "unitId": "unit_meter",
       "lowerIsBetter": false,
       "tauntIds": ["taunt_agility"] 
-    },
-    { 
-      "metricId": "metric_sit_and_reach", 
-      "metricName": "Sit and Reach Test", 
-      "unitId": "unit_meter",
-      "lowerIsBetter": false,
-      "tauntIds": ["taunt_flexibility"] 
     },
     { 
       "metricId": "metric_plank_hold", 
@@ -63,14 +70,15 @@
       "userSex": "Male",
       "userAge": 21,
       "userHeightCm": 179,
-      "userWeightKg": 80,
+      "userWeightKg": 78.0,
       "userMetrics": [ 
         { "metricId": "metric_bench_press", "value": 90.0 },
         { "metricId": "metric_pull_ups", "value": 13.0 },
-        { "metricId": "metric_100m_sprint", "value": 20.8 },
+        { "metricId": "metric_dips", "value": 13.0 },
+        { "metricId": "metric_sprint_100m", "value": 20.8 },
         { "metricId": "metric_vertical_jump", "value": 0.65 },
-        { "metricId": "metric_sit_and_reach", "value": 0.12 },
-        { "metricId": "metric_plank_hold", "value": 100.0 }
+        { "metricId": "metric_plank_hold", "value": 100.0 },
+        { "metricId": "metric_english_proficiency_level", "value": 4.0 }
       ]
     }
   ],
@@ -85,10 +93,11 @@
       "userMetrics": [ 
         { "metricId": "metric_bench_press", "value": 140.0 },
         { "metricId": "metric_pull_ups", "value": 30.0 },
-        { "metricId": "metric_100m_sprint", "value": 11.2 },
+        { "metricId": "metric_dips", "value": 40.0 },
+        { "metricId": "metric_sprint_100m", "value": 11.2 },
         { "metricId": "metric_vertical_jump", "value": 1.295 },
-        { "metricId": "metric_sit_and_reach", "value": 0.47 },
-        { "metricId": "metric_plank_hold", "value": 350.0 }
+        { "metricId": "metric_plank_hold", "value": 350.0 },
+        { "metricId": "metric_english_proficiency_level", "value": 6.0 }
       ]
     }
   ]

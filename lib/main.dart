@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Startistics',
       theme: appTheme,
-      home: const ProfileScreen(), // Указывает на изолированный View компонент
+      home: const ProfileScreen(),
     );
   }
 }

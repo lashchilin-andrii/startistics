@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:startistics/view/edit_metrics_screen.dart'; // Импортируем новый экран
 import 'package:startistics/view/stats_chart.dart';
 import 'package:startistics/view_model/profile_view_model.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -20,7 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double chartSize = (screenWidth * 0.85).clamp(280.0, 400.0);
+    final double chartSize = (screenWidth * 0.9).clamp(280.0, 400.0);
 
     return ListenableBuilder(
       listenable: _viewModel,
@@ -54,7 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           appBar: AppBar(
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
             title: Text(
-              // Читаем подготовленную строку напрямую из ViewModel (View не форматирует данные)
               _viewModel.formattedUserName,
               style: Theme.of(context).textTheme.titleMedium,
             ),
@@ -65,7 +66,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Center(
-                  child: SizedBox(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 30),
                     width: chartSize,
                     height: chartSize,
                     child: PolygonalStatsChart(
@@ -73,9 +75,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
+
                 const Divider(),
+
                 ..._viewModel.userTauntsPercentage.entries.map((entry) {
-                  final String displayName = _viewModel.tauntNames[entry.key] ?? "";
+                  final String displayName =
+                      _viewModel.tauntNames[entry.key] ?? "";
 
                   return Card(
                     margin: const EdgeInsets.symmetric(
@@ -84,8 +89,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: ListTile(
                       minTileHeight: 55,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditMetricsScreen(
+                              tauntId: entry.key,
+                              tauntName: displayName,
+                              viewModel:
+                                  _viewModel, // Передаем ту же вьюмодель для реактивности
+                            ),
+                          ),
+                        );
+                      },
                       leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
                         child: Text(
                           displayName.isNotEmpty
                               ? displayName[0].toUpperCase()
@@ -96,9 +116,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         displayName,
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      trailing: Text(
-                        "${entry.value}%",
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "${entry.value}%",
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 18,
+                            color: Theme.of(context).hintColor,
+                          ),
+                        ],
                       ),
                     ),
                   );

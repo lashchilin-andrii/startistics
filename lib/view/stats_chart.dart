@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 class PolygonalStatsChart extends StatelessWidget {
   const PolygonalStatsChart({super.key, required this.stats});
 
-  /// Основная карта данных пользователя (например, {"taunt_strength": 78.5, "taunt_speed": 60.0})
+  /// Карта данных пользователя. Поддерживает любое количество категорий (от 3 до бесконечности).
   final Map<String, double> stats;
 
   @override
   Widget build(BuildContext context) {
-    // Ограничиваем данные ровно 5 метриками
-    final userTaunts = Map<String, double>.fromEntries(stats.entries.take(5));
+    final userTaunts = Map<String, double>.from(stats);
 
     if (userTaunts.length < 3) {
       return const Center(
@@ -54,15 +53,17 @@ class _PolygonalPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Небольшое смещение вниз (+18), чтобы оставить место для верхнего текстового лейбла
-    final center = Offset(size.width / 2, (size.height / 2) + 18);
-    final radius = size.shortestSide / 2 - 45;
+    // Центрируем график. Смещение вниз убрано, так как отступы теперь считаются динамически
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // Динамический отступ для текста: чем больше сторон, тем аккуратнее должны быть отступы
+    final double padding = sides > 7 ? 55 : 45;
+    final radius = size.shortestSide / 2 - padding;
     final keys = taunts.keys.toList();
 
     // 1. Отрисовка фоновой сетки (концентрические многоугольники)
     final gridPaint = Paint()
-      ..color = Colors.grey
-          .withValues(alpha: 0.2) // Заменено с .withOpacity(0.2)
+      ..color = Colors.grey.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
 
@@ -78,8 +79,7 @@ class _PolygonalPainter extends CustomPainter {
 
     // 2. Отрисовка осей, радиально идущих из центра
     final axisPaint = Paint()
-      ..color = Colors.grey
-          .withValues(alpha: 0.2) // Заменено с .withOpacity(0.2)
+      ..color = Colors.grey.withValues(alpha: 0.2)
       ..strokeWidth = 0.8;
 
     for (int i = 0; i < sides; i++) {
@@ -88,8 +88,7 @@ class _PolygonalPainter extends CustomPainter {
 
     // 3. Отрисовка формы основных данных спортсмена (основной полигон)
     final fillPaint = Paint()
-      ..color = fillColor
-          .withValues(alpha: 0.25) // Заменено с .withOpacity(0.25)
+      ..color = fillColor.withValues(alpha: 0.25)
       ..style = PaintingStyle.fill;
 
     final strokePaint = Paint()
@@ -104,9 +103,12 @@ class _PolygonalPainter extends CustomPainter {
       final p = _point(center, radius, i, fraction);
       i == 0 ? statPath.moveTo(p.dx, p.dy) : statPath.lineTo(p.dx, p.dy);
     }
-    statPath.close();
-    canvas.drawPath(statPath, fillPaint);
-    canvas.drawPath(statPath, strokePaint);
+
+    if (sides > 0) {
+      statPath.close();
+      canvas.drawPath(statPath, fillPaint);
+      canvas.drawPath(statPath, strokePaint);
+    }
 
     // Узловые точки на вершинах многоугольника данных
     final dotPaint = Paint()..color = fillColor;
@@ -118,15 +120,72 @@ class _PolygonalPainter extends CustomPainter {
     // 4. Отрисовка динамических текстовых меток вокруг осей
     for (int i = 0; i < sides; i++) {
       final angle = -pi / 2 + i * 2 * pi / sides;
-      final labelRadius = radius + 26;
+
+      // Смещаем текст чуть дальше от края графика (на 22 пикселя)
+      final labelRadius = radius + 22;
       final lx = center.dx + labelRadius * cos(angle);
       final ly = center.dy + labelRadius * sin(angle);
 
-      final name = keys[i].split('_').last.toUpperCase();
-      final value = "${taunts[keys[i]]!.toStringAsFixed(0)}%";
+      // Форматируем имя (заменяем "taunt_strength" на "STR")
+      // 1. Базовое форматирование имени (получаем чистое слово, например, "AGILITY" или "STRENGTH")
+        final String rawName = keys[i].contains('_')
+            ? keys[i].split('_').last.toUpperCase()
+            : keys[i].toUpperCase();
 
-      _drawText(canvas, name, Offset(lx, ly - 8), fontSize: 11, bold: true);
-      _drawText(canvas, value, Offset(lx, ly + 8), fontSize: 11);
+        // Регулярное выражение для поиска гласных (английских и русских)
+        final RegExp vowelsRegExp = RegExp(r'[aeiouyаеёиоуыэюя]', caseSensitive: false);
+
+        String processedName = '';
+
+        // Разбираем слово посимвольно
+        for (int charIndex = 0; charIndex < rawName.length; charIndex++) {
+          final String char = rawName[charIndex];
+          
+          // Если буква первая (индекс 0) или вторая (индекс 1) — оставляем её в любом случае
+          if (charIndex == 0 || charIndex == 1) {
+            processedName += char;
+          } else {
+            // Для всех остальных позиций (начиная с 3-й буквы) удаляем гласные
+            if (!vowelsRegExp.hasMatch(char)) {
+              processedName += char;
+            }
+          }
+        }
+
+        // Берем первые 3 получившиеся буквы
+        final String name = processedName.length > 3 
+            ? processedName.substring(0, 3) 
+            : processedName;
+
+        final value = "${taunts[keys[i]]!.toStringAsFixed(0)}%";
+      // Чтобы текст не накладывался друг на друга при 8+ осях,
+      // выстраиваем имя и проценты в одну строку, если параметров много.
+      if (sides > 6) {
+        _drawText(
+          canvas,
+          "$name: $value",
+          Offset(lx, ly),
+          fontSize: 10,
+          bold: true,
+          angle: angle,
+        );
+      } else {
+        _drawText(
+          canvas,
+          name,
+          Offset(lx, ly - 7),
+          fontSize: 11,
+          bold: true,
+          angle: angle,
+        );
+        _drawText(
+          canvas,
+          value,
+          Offset(lx, ly + 7),
+          fontSize: 11,
+          angle: angle,
+        );
+      }
     }
   }
 
@@ -136,21 +195,31 @@ class _PolygonalPainter extends CustomPainter {
     Offset position, {
     double fontSize = 14,
     bool bold = false,
+    required double angle,
   }) {
     final tp = TextPainter(
       text: TextSpan(
-        text: text,
         style: TextStyle(
           fontSize: fontSize,
           fontWeight: bold ? FontWeight.bold : FontWeight.normal,
           color: textColor,
           letterSpacing: 0.5,
         ),
+        text: text,
       ),
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, position - Offset(tp.width / 2, tp.height / 2));
+
+    // Умное выравнивание: смещаем точку привязки текста в зависимости от того,
+    // с какой стороны от центра находится ось (слева, справа, сверху или снизу)
+    final cosA = cos(angle);
+    final sinA = sin(angle);
+
+    final adjustedX = position.dx - tp.width / 2 + (cosA * (tp.width / 2));
+    final adjustedY = position.dy - tp.height / 2 + (sinA * (tp.height / 2));
+
+    tp.paint(canvas, Offset(adjustedX, adjustedY));
   }
 
   @override
