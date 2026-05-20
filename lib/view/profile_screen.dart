@@ -80,7 +80,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Итерируемся напрямую по списку моделей таунтов из ViewModel
                 ..._viewModel.taunts.map((taunt) {
                   // Получаем процент для текущего таунта (дефолт 0.0, если данных нет)
-                  final double percentage = _viewModel.userTauntsPercentage[taunt.tauntId] ?? 0.0;
+                  final double percentage =
+                      _viewModel.userTauntsPercentage[taunt.tauntId] ?? 0.0;
                   final String displayName = taunt.tauntName;
 
                   return Card(
@@ -97,13 +98,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             builder: (context) => EditMetricsScreen(
                               tauntId: taunt.tauntId,
                               tauntName: displayName,
-                              viewModel: _viewModel, // Передаем вьюмодель для реактивности
+                              viewModel:
+                                  _viewModel, // Передаем вьюмодель для реактивности
                             ),
                           ),
                         );
                       },
                       leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
                         child: Text(
                           displayName.isNotEmpty
                               ? displayName[0].toUpperCase()

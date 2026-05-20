@@ -13,4 +13,14 @@ abstract class BaseRepository {
     final rawList = await dataSource.getSection(sectionName);
     return rawList.map((e) => fromJson(e as Map<String, dynamic>)).toList();
   }
+
+  Future<void> writeAll<T extends BaseModel>({
+    required String sectionName,
+    required List<T> models,
+  }) async {
+    final List<Map<String, dynamic>> rawList = models
+        .map((m) => m.toJson())
+        .toList();
+    await dataSource.saveSection(sectionName, rawList);
+  }
 }

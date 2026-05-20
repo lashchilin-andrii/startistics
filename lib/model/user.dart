@@ -33,4 +33,17 @@ class UserModel implements BaseModel {
           .toList(),
     );
   }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'userName': userName,
+      'userSex': userSex,
+      'userAge': userAge,
+      'userHeightCm': userHeightCm,
+      'userWeightKg': userWeightKg,
+      'userMetrics': userMetrics.map((e) => e.toJson()).toList(),
+    };
+  }
 }

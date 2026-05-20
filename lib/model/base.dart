@@ -1,1 +1,3 @@
-abstract class BaseModel {}
+abstract class BaseModel {
+  Map<String, dynamic> toJson();
+}

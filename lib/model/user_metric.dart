@@ -10,4 +10,8 @@ class UserMetricModel {
       value: (json['value'] ?? 0.0).toDouble(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {'metricId': metricId, 'value': value};
+  }
 }

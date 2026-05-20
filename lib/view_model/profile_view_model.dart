@@ -19,9 +19,12 @@ class ProfileViewModel extends ChangeNotifier {
   List<MetricModel> _metrics = [];
   List<UnitModel> _units = [];
 
+  // КЭШ: Хранит всех пользователей из файла, чтобы не стереть их при обновлении текущего
+  List<UserModel> _allUsersCache = [];
+
   // Результат вычислений для UI
   Map<String, double> _userTauntsPercentage = {};
-  
+
   ViewState _state = ViewState.loading;
   String _errorMessage = '';
 
@@ -30,8 +33,7 @@ class ProfileViewModel extends ChangeNotifier {
   String get formattedUserName => _profile?.userName.toUpperCase() ?? '';
   ViewState get state => _state;
   String get errorMessage => _errorMessage;
-  
-  // UI забирает проценты и список таунтов напрямую
+
   Map<String, double> get userTauntsPercentage => _userTauntsPercentage;
   List<TauntModel> get taunts => _taunts;
 
@@ -50,7 +52,10 @@ class ProfileViewModel extends ChangeNotifier {
         UnitRepository().readAllUnits(),
       ]);
 
-      _profile = List<UserModel>.from(results[0]).firstOrNull;
+      // Сохраняем исходный сырой список всех юзеров в кэш
+      _allUsersCache = List<UserModel>.from(results[0]);
+
+      _profile = _allUsersCache.firstOrNull;
       _standards = List<UserModel>.from(results[1]);
       _taunts = List<TauntModel>.from(results[2]);
       _metrics = List<MetricModel>.from(results[3]);
@@ -68,6 +73,24 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
+  /// НОВЫЙ МЕТОД: Сохраняет изменения профиля из оперативки на постоянный диск телефона
+  Future<void> saveProfile() async {
+    if (_profile == null) return;
+
+    // 1. Ищем текущего пользователя в закэшированном списке
+    final index = _allUsersCache.indexWhere((u) => u.userId == _profile!.userId);
+    
+    if (index != -1) {
+      // Обновляем данные пользователя в кэше списков
+      _allUsersCache[index] = _profile!;
+    } else {
+      _allUsersCache.add(_profile!);
+    }
+
+    // 2. Вызываем метод репозитория для полной перезаписи секции "users"
+    await UserRepository().saveUsers(_allUsersCache);
+  }
+
   /// Возвращает отфильтрованный список метрик для конкретного таунта
   List<Map<String, dynamic>> getMetricsForTaunt(String tauntId) {
     if (_profile == null) return [];
@@ -75,15 +98,22 @@ class ProfileViewModel extends ChangeNotifier {
     final List<Map<String, dynamic>> filteredMetrics = [];
 
     for (var uMetric in _profile!.userMetrics) {
-      // Ищем определение этой метрики в глобальном списке моделей
       final metricDef = _metrics.firstWhere(
         (m) => m.metricId == uMetric.metricId,
-        orElse: () => MetricModel(metricId: '', metricName: uMetric.metricId, unitId: '', lowerIsBetter: false, tauntIds: []),
+        orElse: () => MetricModel(
+          metricId: '',
+          metricName: uMetric.metricId,
+          unitId: '',
+          lowerIsBetter: false,
+          tauntIds: [],
+        ),
       );
 
-      // Если метрика связана с текущим таунтом — собираем её для UI
       if (metricDef.tauntIds.contains(tauntId)) {
-        final unitDef = _units.firstWhere((u) => u.unitId == metricDef.unitId, orElse: () => UnitModel(unitId: '', unitName: ''));
+        final unitDef = _units.firstWhere(
+          (u) => u.unitId == metricDef.unitId,
+          orElse: () => UnitModel(unitId: '', unitName: ''),
+        );
 
         filteredMetrics.add({
           'metricId': uMetric.metricId,
@@ -101,7 +131,9 @@ class ProfileViewModel extends ChangeNotifier {
   void updateMetricValue(String metricId, double newValue) {
     if (_profile == null) return;
 
-    final index = _profile!.userMetrics.indexWhere((m) => m.metricId == metricId);
+    final index = _profile!.userMetrics.indexWhere(
+      (m) => m.metricId == metricId,
+    );
 
     if (index != -1) {
       _profile!.userMetrics[index] = UserMetricModel(
@@ -114,43 +146,43 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  /// Чистая математика пересчета процентов без использования костыльных мап
+  /// Математика пересчета процентов
   void _recalculateMetrics() {
     if (_profile == null || _standards.isEmpty) return;
 
     final eliteUser = _standards.first;
-    
-    // Инициализируем аккумулятор на основе реального списка таунтов из репозитория
+
     final Map<String, List<double>> userScoresAccumulator = {
       for (var taunt in _taunts) taunt.tauntId: [],
     };
 
-    // Проходим по метрикам пользователя
     for (var uMetric in _profile!.userMetrics) {
       final metricId = uMetric.metricId;
-      
-      // Ищем норматив элиты для этой метрики
+
       final eliteMetric = eliteUser.userMetrics.firstWhere(
         (m) => m.metricId == metricId,
         orElse: () => UserMetricModel(metricId: '', value: 0),
       );
 
-      // Ищем определение правил метрики (lowerIsBetter, tauntIds)
       final metricDef = _metrics.firstWhere(
         (m) => m.metricId == metricId,
-        orElse: () => MetricModel(metricId: '', metricName: '', unitId: '', lowerIsBetter: false, tauntIds: []),
+        orElse: () => MetricModel(
+          metricId: '',
+          metricName: '',
+          unitId: '',
+          lowerIsBetter: false,
+          tauntIds: [],
+        ),
       );
 
       final double uValue = uMetric.value;
       final double eValue = eliteMetric.value;
 
       if (eValue > 0 && uValue > 0 && metricDef.metricId.isNotEmpty) {
-        // Считаем прогресс
         final double userProgress = metricDef.lowerIsBetter
             ? (eValue / uValue) * 100
             : (uValue / eValue) * 100;
 
-        // Распределяем прогресс по связанным таунтам
         for (String tauntId in metricDef.tauntIds) {
           if (userScoresAccumulator.containsKey(tauntId)) {
             userScoresAccumulator[tauntId]!.add(userProgress);
@@ -159,12 +191,13 @@ class ProfileViewModel extends ChangeNotifier {
       }
     }
 
-    // Записываем финальные средние проценты
     _userTauntsPercentage = {};
     for (var taunt in _taunts) {
       final scores = userScoresAccumulator[taunt.tauntId] ?? [];
       _userTauntsPercentage[taunt.tauntId] = scores.isNotEmpty
-          ? double.parse((scores.reduce((a, b) => a + b) / scores.length).toStringAsFixed(1))
+          ? double.parse(
+              (scores.reduce((a, b) => a + b) / scores.length).toStringAsFixed(1),
+            )
           : 0.0;
     }
   }

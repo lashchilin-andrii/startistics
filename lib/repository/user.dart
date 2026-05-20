@@ -8,4 +8,12 @@ class UserRepository extends BaseRepository {
       fromJson: UserModel.fromJson,
     );
   }
+
+  // Метод стал чистым и аккуратным
+  Future<void> saveUsers(
+    List<UserModel> users, {
+    String sectionName = "users",
+  }) async {
+    await writeAll<UserModel>(sectionName: sectionName, models: users);
+  }
 }

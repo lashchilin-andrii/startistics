@@ -18,24 +18,20 @@ class EditMetricsScreen extends StatefulWidget {
 }
 
 class _EditMetricsScreenState extends State<EditMetricsScreen> {
-  // Список метрик, который мы считаем ОДИН раз при открытии экрана
   List<Map<String, dynamic>> _metricsToEdit = [];
   final Map<String, TextEditingController> _controllers = {};
 
   @override
   void initState() {
     super.initState();
-    // Получаем снапшот данных один раз. Экран больше не будет перестраиваться от notifyListeners
     _metricsToEdit = widget.viewModel.getMetricsForTaunt(widget.tauntId);
 
-    // Сразу инициализируем все контроллеры сохраненными значениями
     for (var metric in _metricsToEdit) {
       final metricId = metric['metricId'] as String;
       final currentValue = metric['value'] as double;
       
-      // Красиво убираем ".0", если число целое (например, 100 вместо 100.0)
-      final String formattedValue = currentValue % 1 == 0 
-          ? currentValue.toInt().toString() 
+      final String formattedValue = currentValue % 1 == 0
+          ? currentValue.toInt().toString()
           : currentValue.toString();
 
       _controllers[metricId] = TextEditingController(text: formattedValue);
@@ -50,23 +46,42 @@ class _EditMetricsScreenState extends State<EditMetricsScreen> {
     super.dispose();
   }
 
-  // Метод сохранения, который вызывается по нажатию на галочку
-  void _saveAllChanges() {
+  // Сделали метод асинхронным для безопасной записи на флешку девайса
+  void _saveAllChanges() async {
+    // 1. Сначала переносим обновленные данные из полей ввода в оперативку ViewModel
     for (var metric in _metricsToEdit) {
       final metricId = metric['metricId'] as String;
       final text = _controllers[metricId]?.text ?? '';
-      
+
       final newValue = double.tryParse(text) ?? 0.0;
       widget.viewModel.updateMetricValue(metricId, newValue);
     }
-    
-    // Возвращаемся на ProfileScreen, который сам обновится благодаря ListenableBuilder внутри него
-    Navigator.pop(context);
+
+    // 2. Показываем системный диалог с крутилкой, блокируя интерфейс на время записи
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // 3. Вызываем асинхронное сохранение полного JSON на телефон
+      await widget.viewModel.saveProfile();
+    } catch (e) {
+      // Здесь при желании можно вывести SnackBar с ошибкой
+    } finally {
+      // 4. Закрываем крутилку и возвращаемся назад на профиль
+      if (mounted) {
+        Navigator.pop(context); // Убирает диалог загрузки
+        Navigator.pop(context); // Закрывает EditMetricsScreen
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Больше никакого ListenableBuilder вокруг Scaffold!
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.tauntName),
@@ -120,7 +135,6 @@ class _EditMetricsScreenState extends State<EditMetricsScreen> {
                                 vertical: 8,
                               ),
                             ),
-                            // Параметр onChanged больше НЕ дергает ViewModel, фокус не пропадет!
                           ),
                         ),
                       ],

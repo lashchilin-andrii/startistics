@@ -1,6 +1,6 @@
 import 'package:startistics/model/base.dart';
 
-class MetricModel implements BaseModel {
+class MetricModel extends BaseModel {
   final String metricId;
   final String metricName;
   final String unitId;
@@ -23,5 +23,16 @@ class MetricModel implements BaseModel {
       lowerIsBetter: json['lowerIsBetter'] ?? false,
       tauntIds: List<String>.from(json['tauntIds'] ?? []),
     );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'metricId': metricId,
+      'metricName': metricName,
+      'unitId': unitId,
+      'lowerIsBetter': lowerIsBetter,
+      'tauntIds': tauntIds, 
+    };
   }
 }

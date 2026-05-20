@@ -1,6 +1,6 @@
 import 'package:startistics/model/base.dart';
 
-class TauntModel implements BaseModel {
+class TauntModel extends BaseModel {
   final String tauntId;
   final String tauntName;
 
@@ -11,5 +11,13 @@ class TauntModel implements BaseModel {
       tauntId: json['tauntId'] ?? '',
       tauntName: json['tauntName'] ?? '',
     );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'tauntId': tauntId,
+      'tauntName': tauntName,
+    };
   }
 }
