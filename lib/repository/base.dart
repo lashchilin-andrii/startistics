@@ -2,11 +2,11 @@ import 'package:startistics/model/base.dart';
 import 'package:startistics/service/json_asset_data_source.dart';
 
 abstract class BaseRepository {
-  final JsonAssetDataSource dataSource;
+  final JsonAssetDataSource dataSource = JsonAssetDataSource();
 
-  BaseRepository(this.dataSource);
+  BaseRepository();
 
-  Future<List<T>> loadData<T extends BaseModel>({
+  Future<List<T>> readAll<T extends BaseModel>({
     required String sectionName,
     required T Function(Map<String, dynamic>) fromJson,
   }) async {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:startistics/view/edit_metrics_screen.dart'; // Импортируем новый экран
+import 'package:startistics/view/edit_metrics_screen.dart';
 import 'package:startistics/view/stats_chart.dart';
 import 'package:startistics/view_model/profile_view_model.dart';
 
@@ -44,7 +44,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        // MVVM Оптимизация: Проверяем флаг наличия данных во ViewModel
         if (!_viewModel.hasData) {
           return Scaffold(
             appBar: AppBar(title: const Text("No Data"), centerTitle: true),
@@ -78,9 +77,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const Divider(),
 
-                ..._viewModel.userTauntsPercentage.entries.map((entry) {
-                  final String displayName =
-                      _viewModel.tauntNames[entry.key] ?? "";
+                // Итерируемся напрямую по списку моделей таунтов из ViewModel
+                ..._viewModel.taunts.map((taunt) {
+                  // Получаем процент для текущего таунта (дефолт 0.0, если данных нет)
+                  final double percentage = _viewModel.userTauntsPercentage[taunt.tauntId] ?? 0.0;
+                  final String displayName = taunt.tauntName;
 
                   return Card(
                     margin: const EdgeInsets.symmetric(
@@ -94,18 +95,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => EditMetricsScreen(
-                              tauntId: entry.key,
+                              tauntId: taunt.tauntId,
                               tauntName: displayName,
-                              viewModel:
-                                  _viewModel, // Передаем ту же вьюмодель для реактивности
+                              viewModel: _viewModel, // Передаем вьюмодель для реактивности
                             ),
                           ),
                         );
                       },
                       leading: CircleAvatar(
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primaryContainer,
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                         child: Text(
                           displayName.isNotEmpty
                               ? displayName[0].toUpperCase()
@@ -120,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            "${entry.value}%",
+                            "${percentage.toStringAsFixed(1)}%",
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           const SizedBox(width: 8),

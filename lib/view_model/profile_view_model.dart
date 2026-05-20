@@ -2,44 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:startistics/model/metric.dart';
 import 'package:startistics/model/taunt.dart';
 import 'package:startistics/model/unit.dart';
-import 'package:startistics/repository/unit.dart';
-import '../service/json_asset_data_source.dart';
+import '../model/user.dart';
+import '../model/user_metric.dart';
 import '../repository/user.dart';
 import '../repository/taunt.dart';
 import '../repository/metric.dart';
-import '../model/user.dart';
-import '../model/user_metric.dart';
+import '../repository/unit.dart';
 
 enum ViewState { loading, success, error }
 
 class ProfileViewModel extends ChangeNotifier {
-  static final _dataSource = JsonAssetDataSource();
-  final UserRepository _userRepository = UserRepository(_dataSource);
-  final TauntRepository _tauntRepository = TauntRepository(_dataSource);
-  final MetricRepository _metricRepository = MetricRepository(_dataSource);
-  final UnitRepository _unitRepository = UnitRepository(_dataSource);
-
+  // Чистые списки объектов из "БД" (JSON-файлов)
   UserModel? _profile;
+  List<UserModel> _standards = [];
+  List<TauntModel> _taunts = [];
+  List<MetricModel> _metrics = [];
+  List<UnitModel> _units = [];
+
+  // Результат вычислений для UI
   Map<String, double> _userTauntsPercentage = {};
-  Map<String, String> _tauntIdToNameMap = {};
+  
   ViewState _state = ViewState.loading;
   String _errorMessage = '';
-
-  // Специфичные кэш-карты для связи сущностей без повторной загрузки данных
-  Map<String, List<String>> _metricToTauntsMap = {};
-  Map<String, bool> _metricToLowerIsBetterMap = {};
-  Map<String, String> _metricIdToNameMap = {};
-  Map<String, String> _metricIdToUnitMap = {};
-  Map<String, double> _eliteMetricsMap = {};
 
   // MVVM Геттеры
   bool get hasData => _profile != null;
   String get formattedUserName => _profile?.userName.toUpperCase() ?? '';
-
-  Map<String, double> get userTauntsPercentage => _userTauntsPercentage;
-  Map<String, String> get tauntNames => _tauntIdToNameMap;
   ViewState get state => _state;
   String get errorMessage => _errorMessage;
+  
+  // UI забирает проценты и список таунтов напрямую
+  Map<String, double> get userTauntsPercentage => _userTauntsPercentage;
+  List<TauntModel> get taunts => _taunts;
 
   /// Загрузка данных из репозиториев (вызывается один раз при старте экрана)
   Future<void> loadAndProcessMetrics() async {
@@ -47,56 +41,22 @@ class ProfileViewModel extends ChangeNotifier {
       _state = ViewState.loading;
       notifyListeners();
 
+      // Загружаем всё параллельно без блокировок
       final results = await Future.wait([
-        _userRepository.getUsers("users"),
-        _userRepository.getUsers("usersStandarts"),
-        _tauntRepository.getTaunts(),
-        _metricRepository.getMetricDefinitions(),
-        _unitRepository.getUnits(),
+        UserRepository().readAllUsers(),
+        UserRepository().readAllUsers(sectionName: "usersStandarts"),
+        TauntRepository().readAllTaunts(),
+        MetricRepository().readAllMetrics(),
+        UnitRepository().readAllUnits(),
       ]);
 
-      final List<UserModel> users = results[0] as List<UserModel>;
-      final List<UserModel> standards = results[1] as List<UserModel>;
-      final List<TauntModel> tauntsList = results[2] as List<TauntModel>;
-      final List<MetricModel> globalMetrics = results[3] as List<MetricModel>;
-      final List<UnitModel> unitsList = results[4] as List<UnitModel>;
+      _profile = List<UserModel>.from(results[0]).firstOrNull;
+      _standards = List<UserModel>.from(results[1]);
+      _taunts = List<TauntModel>.from(results[2]);
+      _metrics = List<MetricModel>.from(results[3]);
+      _units = List<UnitModel>.from(results[4]);
 
-      if (users.isEmpty || standards.isEmpty) {
-        throw Exception("Пользователи или нормативы не найдены в репозиториях");
-      }
-
-      final user = users.first;
-      final eliteUser = standards.first;
-      _profile = user;
-
-      // Мапим ID таунтов на их имена
-      _tauntIdToNameMap = {for (var t in tauntsList) t.tauntId: t.tauntName};
-
-      // Мапим ID юнитов на их строковые имена (kg, seconds...)
-      final Map<String, String> unitIdToNameMap = {
-        for (var u in unitsList) u.unitId: u.unitName,
-      };
-
-      // Наполняем глобальные кэш-карты связей для быстрого O(1) доступа
-      _metricToTauntsMap = {};
-      _metricToLowerIsBetterMap = {};
-      _metricIdToNameMap = {};
-      _metricIdToUnitMap = {};
-
-      for (var m in globalMetrics) {
-        _metricToLowerIsBetterMap[m.metricId] = m.lowerIsBetter;
-        _metricToTauntsMap[m.metricId] = m.tauntIds;
-        _metricIdToNameMap[m.metricId] = m.metricName;
-        _metricIdToUnitMap[m.metricId] = unitIdToNameMap[m.unitId] ?? '';
-      }
-
-      // Сохраняем нормативы элиты
-      _eliteMetricsMap = {
-        for (var m in eliteUser.userMetrics)
-          m.metricId: (m.value as num).toDouble(),
-      };
-
-      // Рассчитываем проценты
+      // Рассчитываем проценты на основе загруженных списков
       _recalculateMetrics();
 
       _state = ViewState.success;
@@ -108,22 +68,28 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  /// Возвращает отфильтрованный список метрик, привязанных к конкретному tauntId
+  /// Возвращает отфильтрованный список метрик для конкретного таунта
   List<Map<String, dynamic>> getMetricsForTaunt(String tauntId) {
     if (_profile == null) return [];
 
     final List<Map<String, dynamic>> filteredMetrics = [];
 
     for (var uMetric in _profile!.userMetrics) {
-      final metricId = uMetric.metricId;
-      final associatedTaunts = _metricToTauntsMap[metricId] ?? [];
+      // Ищем определение этой метрики в глобальном списке моделей
+      final metricDef = _metrics.firstWhere(
+        (m) => m.metricId == uMetric.metricId,
+        orElse: () => MetricModel(metricId: '', metricName: uMetric.metricId, unitId: '', lowerIsBetter: false, tauntIds: []),
+      );
 
-      if (associatedTaunts.contains(tauntId)) {
+      // Если метрика связана с текущим таунтом — собираем её для UI
+      if (metricDef.tauntIds.contains(tauntId)) {
+        final unitDef = _units.firstWhere((u) => u.unitId == metricDef.unitId, orElse: () => UnitModel(unitId: '', unitName: ''));
+
         filteredMetrics.add({
-          'metricId': metricId,
-          'metricName': _metricIdToNameMap[metricId] ?? metricId,
-          'unitName': _metricIdToUnitMap[metricId] ?? '',
-          'value': (uMetric.value as num).toDouble(),
+          'metricId': uMetric.metricId,
+          'metricName': metricDef.metricName,
+          'unitName': unitDef.unitName,
+          'value': uMetric.value,
         });
       }
     }
@@ -131,19 +97,15 @@ class ProfileViewModel extends ChangeNotifier {
     return filteredMetrics;
   }
 
+  /// Изменение значения пользователем
   void updateMetricValue(String metricId, double newValue) {
     if (_profile == null) return;
 
-    // Ищем индекс нужной метрики в списке пользователя
-    final index = _profile!.userMetrics.indexWhere(
-      (m) => m.metricId == metricId,
-    );
+    final index = _profile!.userMetrics.indexWhere((m) => m.metricId == metricId);
 
     if (index != -1) {
-      final currentMetric = _profile!.userMetrics[index];
-
       _profile!.userMetrics[index] = UserMetricModel(
-        metricId: currentMetric.metricId,
+        metricId: metricId,
         value: newValue,
       );
 
@@ -152,48 +114,57 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  /// Изолированная математика пересчета процентов по категориям (Taunts)
+  /// Чистая математика пересчета процентов без использования костыльных мап
   void _recalculateMetrics() {
-    if (_profile == null) return;
+    if (_profile == null || _standards.isEmpty) return;
 
+    final eliteUser = _standards.first;
+    
+    // Инициализируем аккумулятор на основе реального списка таунтов из репозитория
     final Map<String, List<double>> userScoresAccumulator = {
-      for (var tauntId in _tauntIdToNameMap.keys) tauntId: [],
+      for (var taunt in _taunts) taunt.tauntId: [],
     };
 
+    // Проходим по метрикам пользователя
     for (var uMetric in _profile!.userMetrics) {
-      final String metricId = uMetric.metricId;
-      final double uValue = (uMetric.value as num).toDouble();
+      final metricId = uMetric.metricId;
+      
+      // Ищем норматив элиты для этой метрики
+      final eliteMetric = eliteUser.userMetrics.firstWhere(
+        (m) => m.metricId == metricId,
+        orElse: () => UserMetricModel(metricId: '', value: 0),
+      );
 
-      if (_eliteMetricsMap.containsKey(metricId) &&
-          _metricToTauntsMap.containsKey(metricId)) {
-        final double eValue = _eliteMetricsMap[metricId]!;
+      // Ищем определение правил метрики (lowerIsBetter, tauntIds)
+      final metricDef = _metrics.firstWhere(
+        (m) => m.metricId == metricId,
+        orElse: () => MetricModel(metricId: '', metricName: '', unitId: '', lowerIsBetter: false, tauntIds: []),
+      );
 
-        if (eValue > 0 && uValue > 0) {
-          final bool lowerIsBetter =
-              _metricToLowerIsBetterMap[metricId] ?? false;
+      final double uValue = uMetric.value;
+      final double eValue = eliteMetric.value;
 
-          final double userProgress = lowerIsBetter
-              ? (eValue / uValue) * 100
-              : (uValue / eValue) * 100;
+      if (eValue > 0 && uValue > 0 && metricDef.metricId.isNotEmpty) {
+        // Считаем прогресс
+        final double userProgress = metricDef.lowerIsBetter
+            ? (eValue / uValue) * 100
+            : (uValue / eValue) * 100;
 
-          for (String tauntId in _metricToTauntsMap[metricId]!) {
-            if (userScoresAccumulator.containsKey(tauntId)) {
-              userScoresAccumulator[tauntId]!.add(userProgress);
-            }
+        // Распределяем прогресс по связанным таунтам
+        for (String tauntId in metricDef.tauntIds) {
+          if (userScoresAccumulator.containsKey(tauntId)) {
+            userScoresAccumulator[tauntId]!.add(userProgress);
           }
         }
       }
     }
 
+    // Записываем финальные средние проценты
     _userTauntsPercentage = {};
-    for (var tauntId in _tauntIdToNameMap.keys) {
-      final scores = userScoresAccumulator[tauntId]!;
-      _userTauntsPercentage[tauntId] = scores.isNotEmpty
-          ? double.parse(
-              (scores.reduce((a, b) => a + b) / scores.length).toStringAsFixed(
-                1,
-              ),
-            )
+    for (var taunt in _taunts) {
+      final scores = userScoresAccumulator[taunt.tauntId] ?? [];
+      _userTauntsPercentage[taunt.tauntId] = scores.isNotEmpty
+          ? double.parse((scores.reduce((a, b) => a + b) / scores.length).toStringAsFixed(1))
           : 0.0;
     }
   }
