@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 
 class JsonAssetDataSource {
   const JsonAssetDataSource();
@@ -9,9 +8,23 @@ class JsonAssetDataSource {
   // Имя файла, в котором мы будем хранить "БД" на телефоне пользователя
   static const String _dbFileName = 'db.json';
 
-  /// Получает путь к файлу базы данных в локальных документах устройства
+  /// Получает путь к файлу базы данных в локальной директории приложения
+  /// Без path_provider используем внутреннее изолированное пространство приложения.
   Future<File> _getLocalFile() async {
-    final directory = await getApplicationDocumentsDirectory();
+    // В Android/Linux это безопасная папка самого приложения, куда есть доступ на запись.
+    // Чтобы гарантировать правильный путь в зависимости от платформы, 
+    // Flutter хранит пути к кэшу прямо в системных переменных среды.
+    final String baseDir = Platform.isAndroid 
+        ? '/data/data/com.example.startistics/files' // Стандартный путь для Android (замени com.example.startistics на свой applicationId, если менял его)
+        : Directory.current.path;
+
+    // Альтернативный и полностью кроссплатформенный вариант без путей — 
+    // использовать подкапотный каталог приложения:
+    final directory = Directory(baseDir);
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+    
     return File('${directory.path}/$_dbFileName');
   }
 
@@ -33,7 +46,12 @@ class JsonAssetDataSource {
         jsonDecode(assetsContent) as Map<String, dynamic>;
 
     // Сразу кэшируем его на диск устройства для последующих модификаций
-    await localFile.writeAsString(jsonEncode(db));
+    try {
+      await localFile.writeAsString(jsonEncode(db));
+    } catch (e) {
+      // Лог на случай, если папка на какой-то кастомной прошивке защищена
+      print("Ошибка первичного кэширования БД: $e");
+    }
     return db;
   }
 
@@ -43,7 +61,7 @@ class JsonAssetDataSource {
     return db[sectionName] as List<dynamic>? ?? [];
   }
 
-  /// НОВЫЙ МЕТОД: Перезаписывает конкретную секцию и сохраняет весь JSON на диск
+  /// Перезаписывает конкретную секцию и сохраняет весь JSON на диск
   Future<void> saveSection(
     String sectionName,
     List<Map<String, dynamic>> newSectionData,
